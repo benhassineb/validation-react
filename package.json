@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "aurelia-templating-binding": "^1.5.3",
+    "aurelia-validation": "^1.4.0",
+    "core-js": "^3.0.0",
     "react": "^16.8.5",
+    "react-app-polyfill": "^0.2.2",
     "react-dom": "^16.8.5",
     "react-scripts": "2.1.8"
   },
