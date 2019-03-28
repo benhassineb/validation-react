@@ -8,11 +8,10 @@ import {
     PropertyAccessorParser,
     ValidationRules,
     StandardValidator,
-    ValidationMessageProvider,
-    ValidationController,
-    validateTrigger
+    ValidationMessageProvider
 } from 'aurelia-validation';
-import { PersonValidationRules ,Person} from './person';
+import { PersonValidationRules, Person, AddressValidationRules, Address } from './person';
+import { ValidationController } from './validation-controller';
 
 
 export const getValidationController = () => {
@@ -22,9 +21,7 @@ export const getValidationController = () => {
     const propertyParser = new PropertyAccessorParser(parser);
     ValidationRules.initialize(messageParser, propertyParser);
     const validator = new StandardValidator(new ValidationMessageProvider(messageParser), new ViewResources());
-    const propertyAccessorParser = propertyParser;
-    const validationController = new ValidationController(validator, propertyAccessorParser);
-    validationController.validateTrigger = validateTrigger.manual;
+    const validationController = new ValidationController(validator);
 
     ValidationRules.customRule(
         'date',
@@ -32,6 +29,8 @@ export const getValidationController = () => {
         `\${$displayName} must be a Date.`
     );
     PersonValidationRules().on(Person);
+
+    AddressValidationRules().on(Address);
 
 
     return { validator: validator, controller: validationController };

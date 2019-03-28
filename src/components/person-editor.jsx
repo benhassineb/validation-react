@@ -6,11 +6,13 @@ export class PersonEditor extends Component {
   constructor(props) {
     super(props)
     this.controller = getValidationController().controller;
+
     this.state = {
       person: new Person(),
       validationErrors: [],
       controller: this.controller
     };
+    // this.controller.addObject(this.state.person);
   }
 
   handleChange = (el) => {
@@ -24,6 +26,7 @@ export class PersonEditor extends Component {
 
 
   handleSubmit = (e, propertyName) => {
+    console.log(this.state.person);
     let instruction = { object: this.state.person };
     if (propertyName) {
       instruction = { object: this.state.person, propertyName: propertyName }
@@ -37,13 +40,11 @@ export class PersonEditor extends Component {
           let errors = result.results.filter(res => !res.valid);
           this.setState({ validationErrors: errors });
           this.setState({ controller: this.controller });
-
         }
       });
   }
 
   render() {
-    console.log(this.state.controller);
     return (<div>
 
       <form className="needs-validation">
