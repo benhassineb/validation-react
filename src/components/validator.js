@@ -14,25 +14,35 @@ import { PersonValidationRules, Person, AddressValidationRules, Address } from '
 import { ValidationController } from './validation-controller';
 
 
-export const getValidationController = () => {
+export const initValidator = () => {
     const parser = new Parser();
     const templatingBindingLanguage = new TemplatingBindingLanguage(parser, null, new SyntaxInterpreter());
     const messageParser = new ValidationMessageParser(templatingBindingLanguage);
     const propertyParser = new PropertyAccessorParser(parser);
     ValidationRules.initialize(messageParser, propertyParser);
     const validator = new StandardValidator(new ValidationMessageProvider(messageParser), new ViewResources());
-    const validationController = new ValidationController(validator);
 
+    initValidationRules();
+
+    return validator;
+
+}
+
+export const validationControllerInstance = () => {
+    return new ValidationController(initValidator());
+}
+export const initCustomRules = () => {
     ValidationRules.customRule(
         'date',
         (value, obj) => value === null || value === undefined || value instanceof Date,
         `\${$displayName} must be a Date.`
     );
-    PersonValidationRules().on(Person);
-
-    AddressValidationRules().on(Address);
-
-
-    return { validator: validator, controller: validationController };
-
 }
+
+export const initValidationRules = () => {
+    initCustomRules();
+    PersonValidationRules().on(Person);
+    AddressValidationRules().on(Address);
+}
+
+

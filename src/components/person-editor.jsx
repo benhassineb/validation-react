@@ -1,11 +1,11 @@
 import React, { Component } from 'react';
-import { getValidationController } from './validator';
+import { validationControllerInstance } from './validator';
 import { Person } from './person';
 
 export class PersonEditor extends Component {
   constructor(props) {
     super(props)
-    this.controller = getValidationController().controller;
+    this.controller = validationControllerInstance();
 
     this.state = {
       person: new Person(),

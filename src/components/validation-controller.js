@@ -93,6 +93,39 @@ export class ValidationController {
         return returnPromise;
     }
 
+    isObject = val =>
+        val && typeof val === 'object' && !Array.isArray(val);
+
+    getChildObjects = (obj, objArray = []) => {
+        Object.entries(obj, objArray).forEach(([key, value]) => {
+            if (this.isObject(value)) {
+                this.getChildObjects(value, objArray)
+            } else if (!objArray.find(item => item === obj)) {
+                objArray.push(obj)
+            }
+        });
+    }
+
+    validate2 = (instruction) => {
+        let { object, rules } = instruction;
+        rules = rules || this.objects.get(object);
+        const promises = [];
+        let objects = [];
+        this.getChildObjects(object, objects);
+        objects.forEach(item => this.addObject(item));
+        for (const [object, rules] of Array.from(this.objects)) {
+            promises.push(this.validator.validateObject(object, rules));
+        }
+        return Promise.all(promises).then(resultSets => resultSets.reduce((a, b) => a.concat(b), [])).then((newResults) => {
+            const result = {
+                instruction,
+                valid: newResults.find(x => !x.valid) === undefined,
+                results: newResults
+            };
+            return result;
+        });
+    };
+
 
 
 }
