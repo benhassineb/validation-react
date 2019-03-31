@@ -109,6 +109,7 @@ export class ValidationController {
     validate2 = (instruction) => {
         let { object, rules } = instruction;
         rules = rules || this.objects.get(object);
+        console.log(rules);
         const promises = [];
         let objects = [];
         this.getChildObjects(object, objects);
