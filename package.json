@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "aurelia-validation": "^1.4.0",
     "core-js": "^3.0.0",
     "react": "^16.8.5",
     "react-dom": "^16.8.5",

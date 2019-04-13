@@ -1,7 +1,7 @@
 import 'core-js/proposals/reflect-metadata';
 import { PersonValidationRules, Person, AddressValidationRules, Address } from './person';
 import { Parser } from './aurelia-binding/parser';
-import { ValidationMessageParser, PropertyAccessorParser, ValidationRules, StandardValidator, ValidationMessageProvider } from 'aurelia-validation';
+import { ValidationMessageParser, PropertyAccessorParser, ValidationRules, StandardValidator, ValidationMessageProvider } from './aurelia-validation';
 import { ValidationController } from './validation-controller';
 import { TemplatingBindingLanguage } from './aurelia-binding/templating-binding-language';
 
@@ -19,7 +19,7 @@ export const initValidator = () => {
     ValidationRules.initialize(messageParser, propertyParser);
     const validator = new StandardValidator(new ValidationMessageProvider(messageParser), new ViewResources());
 
-    initValidationRules();
+    initValidationRules(ValidationRules);
 
     return validator;
 
@@ -28,7 +28,7 @@ export const initValidator = () => {
 export const validationControllerInstance = () => {
     return new ValidationController(initValidator());
 }
-export const initCustomRules = () => {
+export const initCustomRules = (ValidationRules) => {
     ValidationRules.customRule(
         'date',
         (value, obj) => value === null || value === undefined || value instanceof Date,
@@ -36,10 +36,10 @@ export const initCustomRules = () => {
     );
 }
 
-export const initValidationRules = () => {
-    initCustomRules();
-    PersonValidationRules().on(Person);
-    AddressValidationRules().on(Address);
+export const initValidationRules = (ValidationRules) => {
+    initCustomRules(ValidationRules);
+    PersonValidationRules(ValidationRules).on(Person);
+    AddressValidationRules(ValidationRules).on(Address);
 }
 
 

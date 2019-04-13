@@ -1,77 +1,4 @@
-import { DOM } from 'aurelia-pal';
-import { AccessMember, AccessScope, AccessKeyed, BindingBehavior, ValueConverter, getContextFor, Parser, bindingBehavior, bindingMode, LiteralString, Binary, Conditional, LiteralPrimitive, CallMember } from 'aurelia-binding';
-import { Optional, Lazy } from 'aurelia-dependency-injection';
-import { TaskQueue } from 'aurelia-task-queue';
-import { customAttribute, bindable, BindingLanguage, ViewResources } from 'aurelia-templating';
-import { getLogger } from 'aurelia-logging';
-
-/**
- * Gets the DOM element associated with the data-binding. Most of the time it's
- * the binding.target but sometimes binding.target is an aurelia custom element,
- * or custom attribute which is a javascript "class" instance, so we need to use
- * the controller's container to retrieve the actual DOM element.
- */
-function getTargetDOMElement(binding, view) {
-    const target = binding.target;
-    // DOM element
-    if (target instanceof Element) {
-        return target;
-    }
-    // custom element or custom attribute
-    // tslint:disable-next-line:prefer-const
-    for (let i = 0, ii = view.controllers.length; i < ii; i++) {
-        const controller = view.controllers[i];
-        if (controller.viewModel === target) {
-            const element = controller.container.get(DOM.Element);
-            if (element) {
-                return element;
-            }
-            throw new Error(`Unable to locate target element for "${binding.sourceExpression}".`);
-        }
-    }
-    throw new Error(`Unable to locate target element for "${binding.sourceExpression}".`);
-}
-
-function getObject(expression, objectExpression, source) {
-    const value = objectExpression.evaluate(source, null);
-    if (value === null || value === undefined || value instanceof Object) {
-        return value;
-    }
-    // tslint:disable-next-line:max-line-length
-    throw new Error(`The '${objectExpression}' part of '${expression}' evaluates to ${value} instead of an object, null or undefined.`);
-}
-/**
- * Retrieves the object and property name for the specified expression.
- * @param expression The expression
- * @param source The scope
- */
-function getPropertyInfo(expression, source) {
-    const originalExpression = expression;
-    while (expression instanceof BindingBehavior || expression instanceof ValueConverter) {
-        expression = expression.expression;
-    }
-    let object;
-    let propertyName;
-    if (expression instanceof AccessScope) {
-        object = getContextFor(expression.name, source, expression.ancestor);
-        propertyName = expression.name;
-    }
-    else if (expression instanceof AccessMember) {
-        object = getObject(originalExpression, expression.object, source);
-        propertyName = expression.name;
-    }
-    else if (expression instanceof AccessKeyed) {
-        object = getObject(originalExpression, expression.object, source);
-        propertyName = expression.key.evaluate(source);
-    }
-    else {
-        throw new Error(`Expression '${originalExpression}' is not compatible with the validate binding-behavior.`);
-    }
-    if (object === null || object === undefined) {
-        return null;
-    }
-    return { object, propertyName };
-}
+import { AccessMember, AccessScope, LiteralString, Binary, Conditional, LiteralPrimitive, CallMember } from "./aurelia-binding/ast";
 
 function isString(value) {
     return Object.prototype.toString.call(value) === '[object String]';
@@ -90,18 +17,15 @@ class PropertyAccessorParser {
         }
         const accessorText = getAccessorExpression(property.toString());
         const accessor = this.parser.parse(accessorText);
-        if (accessor instanceof AccessScope
-            || accessor instanceof AccessMember && accessor.object instanceof AccessScope) {
+        // eslint-disable-next-line
+        if (accessor instanceof AccessScope || accessor instanceof AccessMember && accessor.object instanceof AccessScope) {
             return accessor.name;
         }
         throw new Error(`Invalid property expression: "${accessor}"`);
     }
 }
-PropertyAccessorParser.inject = [Parser];
 function getAccessorExpression(fn) {
-    /* tslint:disable:max-line-length */
     const classic = /^function\s*\([$_\w\d]+\)\s*\{(?:\s*"use strict";)?\s*(?:[$_\w\d.['"\]+;]+)?\s*return\s+[$_\w\d]+\.([$_\w\d]+)\s*;?\s*\}$/;
-    /* tslint:enable:max-line-length */
     const arrow = /^\(?[$_\w\d]+\)?\s*=>\s*[$_\w\d]+\.([$_\w\d]+)$/;
     const match = classic.exec(fn) || arrow.exec(fn);
     if (match === null) {
@@ -110,52 +34,8 @@ function getAccessorExpression(fn) {
     return match[1];
 }
 
-/*! *****************************************************************************
-Copyright (c) Microsoft Corporation. All rights reserved.
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-this file except in compliance with the License. You may obtain a copy of the
-License at http://www.apache.org/licenses/LICENSE-2.0
 
-THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-MERCHANTABLITY OR NON-INFRINGEMENT.
 
-See the Apache Version 2.0 License for specific language governing permissions
-and limitations under the License.
-***************************************************************************** */
-
-function __decorate(decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-}
-
-/**
- * Validation triggers.
- */
-var validateTrigger;
-(function (validateTrigger) {
-    /**
-     * Manual validation.  Use the controller's `validate()` and  `reset()` methods
-     * to validate all bindings.
-     */
-    validateTrigger[validateTrigger["manual"] = 0] = "manual";
-    /**
-     * Validate the binding when the binding's target element fires a DOM "blur" event.
-     */
-    validateTrigger[validateTrigger["blur"] = 1] = "blur";
-    /**
-     * Validate the binding when it updates the model due to a change in the view.
-     */
-    validateTrigger[validateTrigger["change"] = 2] = "change";
-    /**
-     * Validate the binding when the binding's target element fires a DOM "blur" event and
-     * when it updates the model due to a change in the view.
-     */
-    validateTrigger[validateTrigger["changeOrBlur"] = 3] = "changeOrBlur";
-})(validateTrigger || (validateTrigger = {}));
 
 /**
  * Validates objects and properties.
@@ -187,689 +67,8 @@ class ValidateResult {
 }
 ValidateResult.nextId = 0;
 
-class ValidateEvent {
-    constructor(
-    /**
-     * The type of validate event. Either "validate" or "reset".
-     */
-    type, 
-    /**
-     * The controller's current array of errors. For an array containing both
-     * failed rules and passed rules, use the "results" property.
-     */
-    errors, 
-    /**
-     * The controller's current array of validate results. This
-     * includes both passed rules and failed rules. For an array of only failed rules,
-     * use the "errors" property.
-     */
-    results, 
-    /**
-     * The instruction passed to the "validate" or "reset" event. Will be null when
-     * the controller's validate/reset method was called with no instruction argument.
-     */
-    instruction, 
-    /**
-     * In events with type === "validate", this property will contain the result
-     * of validating the instruction (see "instruction" property). Use the controllerValidateResult
-     * to access the validate results specific to the call to "validate"
-     * (as opposed to using the "results" and "errors" properties to access the controller's entire
-     * set of results/errors).
-     */
-    controllerValidateResult) {
-        this.type = type;
-        this.errors = errors;
-        this.results = results;
-        this.instruction = instruction;
-        this.controllerValidateResult = controllerValidateResult;
-    }
-}
 
-/**
- * Orchestrates validation.
- * Manages a set of bindings, renderers and objects.
- * Exposes the current list of validation results for binding purposes.
- */
-class ValidationController {
-    constructor(validator, propertyParser) {
-        this.validator = validator;
-        this.propertyParser = propertyParser;
-        // Registered bindings (via the validate binding behavior)
-        this.bindings = new Map();
-        // Renderers that have been added to the controller instance.
-        this.renderers = [];
-        /**
-         * Validation results that have been rendered by the controller.
-         */
-        this.results = [];
-        /**
-         * Validation errors that have been rendered by the controller.
-         */
-        this.errors = [];
-        /**
-         *  Whether the controller is currently validating.
-         */
-        this.validating = false;
-        // Elements related to validation results that have been rendered.
-        this.elements = new Map();
-        // Objects that have been added to the controller instance (entity-style validation).
-        this.objects = new Map();
-        /**
-         * The trigger that will invoke automatic validation of a property used in a binding.
-         */
-        this.validateTrigger = validateTrigger.blur;
-        // Promise that resolves when validation has completed.
-        this.finishValidating = Promise.resolve();
-        this.eventCallbacks = [];
-    }
-    /**
-     * Subscribe to controller validate and reset events. These events occur when the
-     * controller's "validate"" and "reset" methods are called.
-     * @param callback The callback to be invoked when the controller validates or resets.
-     */
-    subscribe(callback) {
-        this.eventCallbacks.push(callback);
-        return {
-            dispose: () => {
-                const index = this.eventCallbacks.indexOf(callback);
-                if (index === -1) {
-                    return;
-                }
-                this.eventCallbacks.splice(index, 1);
-            }
-        };
-    }
-    /**
-     * Adds an object to the set of objects that should be validated when validate is called.
-     * @param object The object.
-     * @param rules Optional. The rules. If rules aren't supplied the Validator implementation will lookup the rules.
-     */
-    addObject(object, rules) {
-        this.objects.set(object, rules);
-    }
-    /**
-     * Removes an object from the set of objects that should be validated when validate is called.
-     * @param object The object.
-     */
-    removeObject(object) {
-        this.objects.delete(object);
-        this.processResultDelta('reset', this.results.filter(result => result.object === object), []);
-    }
-    /**
-     * Adds and renders an error.
-     */
-    addError(message, object, propertyName = null) {
-        let resolvedPropertyName;
-        if (propertyName === null) {
-            resolvedPropertyName = propertyName;
-        }
-        else {
-            resolvedPropertyName = this.propertyParser.parse(propertyName);
-        }
-        const result = new ValidateResult({ __manuallyAdded__: true }, object, resolvedPropertyName, false, message);
-        this.processResultDelta('validate', [], [result]);
-        return result;
-    }
-    /**
-     * Removes and unrenders an error.
-     */
-    removeError(result) {
-        if (this.results.indexOf(result) !== -1) {
-            this.processResultDelta('reset', [result], []);
-        }
-    }
-    /**
-     * Adds a renderer.
-     * @param renderer The renderer.
-     */
-    addRenderer(renderer) {
-        this.renderers.push(renderer);
-        renderer.render({
-            kind: 'validate',
-            render: this.results.map(result => ({ result, elements: this.elements.get(result) })),
-            unrender: []
-        });
-    }
-    /**
-     * Removes a renderer.
-     * @param renderer The renderer.
-     */
-    removeRenderer(renderer) {
-        this.renderers.splice(this.renderers.indexOf(renderer), 1);
-        renderer.render({
-            kind: 'reset',
-            render: [],
-            unrender: this.results.map(result => ({ result, elements: this.elements.get(result) }))
-        });
-    }
-    /**
-     * Registers a binding with the controller.
-     * @param binding The binding instance.
-     * @param target The DOM element.
-     * @param rules (optional) rules associated with the binding. Validator implementation specific.
-     */
-    registerBinding(binding, target, rules) {
-        this.bindings.set(binding, { target, rules, propertyInfo: null });
-    }
-    /**
-     * Unregisters a binding with the controller.
-     * @param binding The binding instance.
-     */
-    unregisterBinding(binding) {
-        this.resetBinding(binding);
-        this.bindings.delete(binding);
-    }
-    /**
-     * Interprets the instruction and returns a predicate that will identify
-     * relevant results in the list of rendered validation results.
-     */
-    getInstructionPredicate(instruction) {
-        if (instruction) {
-            const { object, propertyName, rules } = instruction;
-            let predicate;
-            if (instruction.propertyName) {
-                predicate = x => x.object === object && x.propertyName === propertyName;
-            }
-            else {
-                predicate = x => x.object === object;
-            }
-            if (rules) {
-                return x => predicate(x) && this.validator.ruleExists(rules, x.rule);
-            }
-            return predicate;
-        }
-        else {
-            return () => true;
-        }
-    }
-    /**
-     * Validates and renders results.
-     * @param instruction Optional. Instructions on what to validate. If undefined, all
-     * objects and bindings will be validated.
-     */
-    validate(instruction) {
-        // Get a function that will process the validation instruction.
-        let execute;
-        if (instruction) {
-            // tslint:disable-next-line:prefer-const
-            let { object, propertyName, rules } = instruction;
-            // if rules were not specified, check the object map.
-            rules = rules || this.objects.get(object);
-            // property specified?
-            if (instruction.propertyName === undefined) {
-                // validate the specified object.
-                execute = () => this.validator.validateObject(object, rules);
-            }
-            else {
-                // validate the specified property.
-                execute = () => this.validator.validateProperty(object, propertyName, rules);
-            }
-        }
-        else {
-            // validate all objects and bindings.
-            execute = () => {
-                const promises = [];
-                for (const [object, rules] of Array.from(this.objects)) {
-                    promises.push(this.validator.validateObject(object, rules));
-                }
-                for (const [binding, { rules }] of Array.from(this.bindings)) {
-                    const propertyInfo = getPropertyInfo(binding.sourceExpression, binding.source);
-                    if (!propertyInfo || this.objects.has(propertyInfo.object)) {
-                        continue;
-                    }
-                    promises.push(this.validator.validateProperty(propertyInfo.object, propertyInfo.propertyName, rules));
-                }
-                return Promise.all(promises).then(resultSets => resultSets.reduce((a, b) => a.concat(b), []));
-            };
-        }
-        // Wait for any existing validation to finish, execute the instruction, render the results.
-        this.validating = true;
-        const returnPromise = this.finishValidating
-            .then(execute)
-            .then((newResults) => {
-            const predicate = this.getInstructionPredicate(instruction);
-            const oldResults = this.results.filter(predicate);
-            this.processResultDelta('validate', oldResults, newResults);
-            if (returnPromise === this.finishValidating) {
-                this.validating = false;
-            }
-            const result = {
-                instruction,
-                valid: newResults.find(x => !x.valid) === undefined,
-                results: newResults
-            };
-            this.invokeCallbacks(instruction, result);
-            return result;
-        })
-            .catch(exception => {
-            // recover, to enable subsequent calls to validate()
-            this.validating = false;
-            this.finishValidating = Promise.resolve();
-            return Promise.reject(exception);
-        });
-        this.finishValidating = returnPromise;
-        return returnPromise;
-    }
-    /**
-     * Resets any rendered validation results (unrenders).
-     * @param instruction Optional. Instructions on what to reset. If unspecified all rendered results
-     * will be unrendered.
-     */
-    reset(instruction) {
-        const predicate = this.getInstructionPredicate(instruction);
-        const oldResults = this.results.filter(predicate);
-        this.processResultDelta('reset', oldResults, []);
-        this.invokeCallbacks(instruction, null);
-    }
-    /**
-     * Gets the elements associated with an object and propertyName (if any).
-     */
-    getAssociatedElements({ object, propertyName }) {
-        const elements = [];
-        for (const [binding, { target }] of Array.from(this.bindings)) {
-            const propertyInfo = getPropertyInfo(binding.sourceExpression, binding.source);
-            if (propertyInfo && propertyInfo.object === object && propertyInfo.propertyName === propertyName) {
-                elements.push(target);
-            }
-        }
-        return elements;
-    }
-    processResultDelta(kind, oldResults, newResults) {
-        // prepare the instruction.
-        const instruction = {
-            kind,
-            render: [],
-            unrender: []
-        };
-        // create a shallow copy of newResults so we can mutate it without causing side-effects.
-        newResults = newResults.slice(0);
-        // create unrender instructions from the old results.
-        for (const oldResult of oldResults) {
-            // get the elements associated with the old result.
-            const elements = this.elements.get(oldResult);
-            // remove the old result from the element map.
-            this.elements.delete(oldResult);
-            // create the unrender instruction.
-            instruction.unrender.push({ result: oldResult, elements });
-            // determine if there's a corresponding new result for the old result we are unrendering.
-            const newResultIndex = newResults.findIndex(x => x.rule === oldResult.rule && x.object === oldResult.object && x.propertyName === oldResult.propertyName);
-            if (newResultIndex === -1) {
-                // no corresponding new result... simple remove.
-                this.results.splice(this.results.indexOf(oldResult), 1);
-                if (!oldResult.valid) {
-                    this.errors.splice(this.errors.indexOf(oldResult), 1);
-                }
-            }
-            else {
-                // there is a corresponding new result...
-                const newResult = newResults.splice(newResultIndex, 1)[0];
-                // get the elements that are associated with the new result.
-                const elements = this.getAssociatedElements(newResult);
-                this.elements.set(newResult, elements);
-                // create a render instruction for the new result.
-                instruction.render.push({ result: newResult, elements });
-                // do an in-place replacement of the old result with the new result.
-                // this ensures any repeats bound to this.results will not thrash.
-                this.results.splice(this.results.indexOf(oldResult), 1, newResult);
-                if (!oldResult.valid && newResult.valid) {
-                    this.errors.splice(this.errors.indexOf(oldResult), 1);
-                }
-                else if (!oldResult.valid && !newResult.valid) {
-                    this.errors.splice(this.errors.indexOf(oldResult), 1, newResult);
-                }
-                else if (!newResult.valid) {
-                    this.errors.push(newResult);
-                }
-            }
-        }
-        // create render instructions from the remaining new results.
-        for (const result of newResults) {
-            const elements = this.getAssociatedElements(result);
-            instruction.render.push({ result, elements });
-            this.elements.set(result, elements);
-            this.results.push(result);
-            if (!result.valid) {
-                this.errors.push(result);
-            }
-        }
-        // render.
-        for (const renderer of this.renderers) {
-            renderer.render(instruction);
-        }
-    }
-    /**
-     * Validates the property associated with a binding.
-     */
-    validateBinding(binding) {
-        if (!binding.isBound) {
-            return;
-        }
-        const propertyInfo = getPropertyInfo(binding.sourceExpression, binding.source);
-        let rules;
-        const registeredBinding = this.bindings.get(binding);
-        if (registeredBinding) {
-            rules = registeredBinding.rules;
-            registeredBinding.propertyInfo = propertyInfo;
-        }
-        if (!propertyInfo) {
-            return;
-        }
-        const { object, propertyName } = propertyInfo;
-        this.validate({ object, propertyName, rules });
-    }
-    /**
-     * Resets the results for a property associated with a binding.
-     */
-    resetBinding(binding) {
-        const registeredBinding = this.bindings.get(binding);
-        let propertyInfo = getPropertyInfo(binding.sourceExpression, binding.source);
-        if (!propertyInfo && registeredBinding) {
-            propertyInfo = registeredBinding.propertyInfo;
-        }
-        if (registeredBinding) {
-            registeredBinding.propertyInfo = null;
-        }
-        if (!propertyInfo) {
-            return;
-        }
-        const { object, propertyName } = propertyInfo;
-        this.reset({ object, propertyName });
-    }
-    /**
-     * Changes the controller's validateTrigger.
-     * @param newTrigger The new validateTrigger
-     */
-    changeTrigger(newTrigger) {
-        this.validateTrigger = newTrigger;
-        const bindings = Array.from(this.bindings.keys());
-        for (const binding of bindings) {
-            const source = binding.source;
-            binding.unbind();
-            binding.bind(source);
-        }
-    }
-    /**
-     * Revalidates the controller's current set of errors.
-     */
-    revalidateErrors() {
-        for (const { object, propertyName, rule } of this.errors) {
-            if (rule.__manuallyAdded__) {
-                continue;
-            }
-            const rules = [[rule]];
-            this.validate({ object, propertyName, rules });
-        }
-    }
-    invokeCallbacks(instruction, result) {
-        if (this.eventCallbacks.length === 0) {
-            return;
-        }
-        const event = new ValidateEvent(result ? 'validate' : 'reset', this.errors, this.results, instruction || null, result);
-        for (let i = 0; i < this.eventCallbacks.length; i++) {
-            this.eventCallbacks[i](event);
-        }
-    }
-}
-ValidationController.inject = [Validator, PropertyAccessorParser];
 
-/**
- * Binding behavior. Indicates the bound property should be validated.
- */
-class ValidateBindingBehaviorBase {
-    constructor(taskQueue) {
-        this.taskQueue = taskQueue;
-    }
-    bind(binding, source, rulesOrController, rules) {
-        // identify the target element.
-        const target = getTargetDOMElement(binding, source);
-        // locate the controller.
-        let controller;
-        if (rulesOrController instanceof ValidationController) {
-            controller = rulesOrController;
-        }
-        else {
-            controller = source.container.get(Optional.of(ValidationController));
-            rules = rulesOrController;
-        }
-        if (controller === null) {
-            throw new Error(`A ValidationController has not been registered.`);
-        }
-        controller.registerBinding(binding, target, rules);
-        binding.validationController = controller;
-        const trigger = this.getValidateTrigger(controller);
-        // tslint:disable-next-line:no-bitwise
-        if (trigger & validateTrigger.change) {
-            binding.vbbUpdateSource = binding.updateSource;
-            // tslint:disable-next-line:only-arrow-functions
-            // tslint:disable-next-line:space-before-function-paren
-            binding.updateSource = function (value) {
-                this.vbbUpdateSource(value);
-                this.validationController.validateBinding(this);
-            };
-        }
-        // tslint:disable-next-line:no-bitwise
-        if (trigger & validateTrigger.blur) {
-            binding.validateBlurHandler = () => {
-                this.taskQueue.queueMicroTask(() => controller.validateBinding(binding));
-            };
-            binding.validateTarget = target;
-            target.addEventListener('blur', binding.validateBlurHandler);
-        }
-        if (trigger !== validateTrigger.manual) {
-            binding.standardUpdateTarget = binding.updateTarget;
-            // tslint:disable-next-line:only-arrow-functions
-            // tslint:disable-next-line:space-before-function-paren
-            binding.updateTarget = function (value) {
-                this.standardUpdateTarget(value);
-                this.validationController.resetBinding(this);
-            };
-        }
-    }
-    unbind(binding) {
-        // reset the binding to it's original state.
-        if (binding.vbbUpdateSource) {
-            binding.updateSource = binding.vbbUpdateSource;
-            binding.vbbUpdateSource = null;
-        }
-        if (binding.standardUpdateTarget) {
-            binding.updateTarget = binding.standardUpdateTarget;
-            binding.standardUpdateTarget = null;
-        }
-        if (binding.validateBlurHandler) {
-            binding.validateTarget.removeEventListener('blur', binding.validateBlurHandler);
-            binding.validateBlurHandler = null;
-            binding.validateTarget = null;
-        }
-        binding.validationController.unregisterBinding(binding);
-        binding.validationController = null;
-    }
-}
-
-/**
- * Binding behavior. Indicates the bound property should be validated
- * when the validate trigger specified by the associated controller's
- * validateTrigger property occurs.
- */
-let ValidateBindingBehavior = class ValidateBindingBehavior extends ValidateBindingBehaviorBase {
-    getValidateTrigger(controller) {
-        return controller.validateTrigger;
-    }
-};
-ValidateBindingBehavior.inject = [TaskQueue];
-ValidateBindingBehavior = __decorate([
-    bindingBehavior('validate')
-], ValidateBindingBehavior);
-/**
- * Binding behavior. Indicates the bound property will be validated
- * manually, by calling controller.validate(). No automatic validation
- * triggered by data-entry or blur will occur.
- */
-let ValidateManuallyBindingBehavior = class ValidateManuallyBindingBehavior extends ValidateBindingBehaviorBase {
-    getValidateTrigger() {
-        return validateTrigger.manual;
-    }
-};
-ValidateManuallyBindingBehavior.inject = [TaskQueue];
-ValidateManuallyBindingBehavior = __decorate([
-    bindingBehavior('validateManually')
-], ValidateManuallyBindingBehavior);
-/**
- * Binding behavior. Indicates the bound property should be validated
- * when the associated element blurs.
- */
-let ValidateOnBlurBindingBehavior = class ValidateOnBlurBindingBehavior extends ValidateBindingBehaviorBase {
-    getValidateTrigger() {
-        return validateTrigger.blur;
-    }
-};
-ValidateOnBlurBindingBehavior.inject = [TaskQueue];
-ValidateOnBlurBindingBehavior = __decorate([
-    bindingBehavior('validateOnBlur')
-], ValidateOnBlurBindingBehavior);
-/**
- * Binding behavior. Indicates the bound property should be validated
- * when the associated element is changed by the user, causing a change
- * to the model.
- */
-let ValidateOnChangeBindingBehavior = class ValidateOnChangeBindingBehavior extends ValidateBindingBehaviorBase {
-    getValidateTrigger() {
-        return validateTrigger.change;
-    }
-};
-ValidateOnChangeBindingBehavior.inject = [TaskQueue];
-ValidateOnChangeBindingBehavior = __decorate([
-    bindingBehavior('validateOnChange')
-], ValidateOnChangeBindingBehavior);
-/**
- * Binding behavior. Indicates the bound property should be validated
- * when the associated element blurs or is changed by the user, causing
- * a change to the model.
- */
-let ValidateOnChangeOrBlurBindingBehavior = class ValidateOnChangeOrBlurBindingBehavior extends ValidateBindingBehaviorBase {
-    getValidateTrigger() {
-        return validateTrigger.changeOrBlur;
-    }
-};
-ValidateOnChangeOrBlurBindingBehavior.inject = [TaskQueue];
-ValidateOnChangeOrBlurBindingBehavior = __decorate([
-    bindingBehavior('validateOnChangeOrBlur')
-], ValidateOnChangeOrBlurBindingBehavior);
-
-/**
- * Creates ValidationController instances.
- */
-class ValidationControllerFactory {
-    constructor(container) {
-        this.container = container;
-    }
-    static get(container) {
-        return new ValidationControllerFactory(container);
-    }
-    /**
-     * Creates a new controller instance.
-     */
-    create(validator) {
-        if (!validator) {
-            validator = this.container.get(Validator);
-        }
-        const propertyParser = this.container.get(PropertyAccessorParser);
-        return new ValidationController(validator, propertyParser);
-    }
-    /**
-     * Creates a new controller and registers it in the current element's container so that it's
-     * available to the validate binding behavior and renderers.
-     */
-    createForCurrentScope(validator) {
-        const controller = this.create(validator);
-        this.container.registerInstance(ValidationController, controller);
-        return controller;
-    }
-}
-ValidationControllerFactory['protocol:aurelia:resolver'] = true;
-
-let ValidationErrorsCustomAttribute = class ValidationErrorsCustomAttribute {
-    constructor(boundaryElement, controllerAccessor) {
-        this.boundaryElement = boundaryElement;
-        this.controllerAccessor = controllerAccessor;
-        this.controller = null;
-        this.errors = [];
-        this.errorsInternal = [];
-    }
-    static inject() {
-        return [DOM.Element, Lazy.of(ValidationController)];
-    }
-    sort() {
-        this.errorsInternal.sort((a, b) => {
-            if (a.targets[0] === b.targets[0]) {
-                return 0;
-            }
-            // tslint:disable-next-line:no-bitwise
-            return a.targets[0].compareDocumentPosition(b.targets[0]) & 2 ? 1 : -1;
-        });
-    }
-    interestingElements(elements) {
-        return elements.filter(e => this.boundaryElement.contains(e));
-    }
-    render(instruction) {
-        for (const { result } of instruction.unrender) {
-            const index = this.errorsInternal.findIndex(x => x.error === result);
-            if (index !== -1) {
-                this.errorsInternal.splice(index, 1);
-            }
-        }
-        for (const { result, elements } of instruction.render) {
-            if (result.valid) {
-                continue;
-            }
-            const targets = this.interestingElements(elements);
-            if (targets.length) {
-                this.errorsInternal.push({ error: result, targets });
-            }
-        }
-        this.sort();
-        this.errors = this.errorsInternal;
-    }
-    bind() {
-        if (!this.controller) {
-            this.controller = this.controllerAccessor();
-        }
-        // this will call render() with the side-effect of updating this.errors
-        this.controller.addRenderer(this);
-    }
-    unbind() {
-        if (this.controller) {
-            this.controller.removeRenderer(this);
-        }
-    }
-};
-__decorate([
-    bindable({ defaultBindingMode: bindingMode.oneWay })
-], ValidationErrorsCustomAttribute.prototype, "controller", void 0);
-__decorate([
-    bindable({ primaryProperty: true, defaultBindingMode: bindingMode.twoWay })
-], ValidationErrorsCustomAttribute.prototype, "errors", void 0);
-ValidationErrorsCustomAttribute = __decorate([
-    customAttribute('validation-errors')
-], ValidationErrorsCustomAttribute);
-
-let ValidationRendererCustomAttribute = class ValidationRendererCustomAttribute {
-    created(view) {
-        this.container = view.container;
-    }
-    bind() {
-        this.controller = this.container.get(ValidationController);
-        this.renderer = this.container.get(this.value);
-        this.controller.addRenderer(this.renderer);
-    }
-    unbind() {
-        this.controller.removeRenderer(this.renderer);
-        this.controller = null;
-        this.renderer = null;
-    }
-};
-ValidationRendererCustomAttribute = __decorate([
-    customAttribute('validation-renderer')
-], ValidationRendererCustomAttribute);
 
 /**
  * Sets, unsets and retrieves rules on an object or constructor function.
@@ -905,7 +104,6 @@ class Rules {
  */
 Rules.key = '__rules__';
 
-// tslint:disable:no-empty
 class ExpressionVisitor {
     visitChain(chain) {
         this.visitArgs(chain.expressions);
@@ -928,9 +126,11 @@ class ExpressionVisitor {
         conditional.no.accept(this);
     }
     visitAccessThis(access) {
+        // eslint-disable-next-line
         access.ancestor = access.ancestor;
     }
     visitAccessScope(access) {
+        // eslint-disable-next-line
         access.name = access.name;
     }
     visitAccessMember(access) {
@@ -959,6 +159,7 @@ class ExpressionVisitor {
         binary.right.accept(this);
     }
     visitLiteralPrimitive(literal) {
+        // eslint-disable-next-line
         literal.value = literal.value;
     }
     visitLiteralArray(literal) {
@@ -968,6 +169,7 @@ class ExpressionVisitor {
         this.visitArgs(literal.values);
     }
     visitLiteralString(literal) {
+        // eslint-disable-next-line
         literal.value = literal.value;
     }
     visitArgs(args) {
@@ -1006,7 +208,6 @@ class ValidationMessageParser {
         return new Conditional(new Binary('||', new Binary('===', part, this.nullExpression), new Binary('===', part, this.undefinedExpression)), this.emptyStringExpression, new CallMember(part, 'toString', []));
     }
 }
-ValidationMessageParser.inject = [BindingLanguage];
 class MessageExpressionValidator extends ExpressionVisitor {
     constructor(originalMessage) {
         super();
@@ -1021,9 +222,8 @@ class MessageExpressionValidator extends ExpressionVisitor {
             throw new Error('$parent is not permitted in validation message expressions.');
         }
         if (['displayName', 'propertyName', 'value', 'object', 'config', 'getDisplayName'].indexOf(access.name) !== -1) {
-            getLogger('aurelia-validation')
-                // tslint:disable-next-line:max-line-length
-                .warn(`Did you mean to use "$${access.name}" instead of "${access.name}" in this validation message template: "${this.originalMessage}"?`);
+            let errorMessage = `Did you mean to use "$${access.name}" instead of "${access.name}" in this validation message template: "${this.originalMessage}"?`;
+            console.log(errorMessage);
         }
     }
 }
@@ -1086,7 +286,6 @@ class ValidationMessageProvider {
         return words.charAt(0).toUpperCase() + words.slice(1);
     }
 }
-ValidationMessageProvider.inject = [ValidationMessageParser];
 
 /**
  * Validates.
@@ -1134,7 +333,6 @@ class StandardValidator extends Validator {
     }
     getMessage(rule, object, value) {
         const expression = rule.message || this.messageProvider.getMessage(rule.messageKey);
-        // tslint:disable-next-line:prefer-const
         let { name: propertyName, displayName } = rule.property;
         if (propertyName !== null) {
             displayName = this.messageProvider.getDisplayName(propertyName, displayName);
@@ -1161,7 +359,7 @@ class StandardValidator extends Validator {
         for (let i = 0; i < rules.length; i++) {
             const rule = rules[i];
             // is the rule related to the property we're validating.
-            // tslint:disable-next-line:triple-equals | Use loose equality for property keys
+            // eslint-disable-next-line
             if (!validateAllProperties && rule.property.name != propertyName) {
                 continue;
             }
@@ -1175,6 +373,7 @@ class StandardValidator extends Validator {
             if (!(promiseOrBoolean instanceof Promise)) {
                 promiseOrBoolean = Promise.resolve(promiseOrBoolean);
             }
+            // eslint-disable-next-line
             promises.push(promiseOrBoolean.then(valid => {
                 const message = valid ? null : this.getMessage(rule, object, value);
                 results.push(new ValidateResult(rule, object, rule.property.name, valid, message));
@@ -1184,12 +383,12 @@ class StandardValidator extends Validator {
         }
         return Promise.all(promises)
             .then(() => {
-            sequence++;
-            if (allValid && sequence < ruleSequence.length) {
-                return this.validateRuleSequence(object, propertyName, ruleSequence, sequence, results);
-            }
-            return results;
-        });
+                sequence++;
+                if (allValid && sequence < ruleSequence.length) {
+                    return this.validateRuleSequence(object, propertyName, ruleSequence, sequence, results);
+                }
+                return results;
+            });
     }
     validate(object, propertyName, rules) {
         // rules specified?
@@ -1204,7 +403,6 @@ class StandardValidator extends Validator {
         return this.validateRuleSequence(object, propertyName, rules, 0, []);
     }
 }
-StandardValidator.inject = [ValidationMessageProvider, ViewResources];
 
 /**
  * Part of the fluent rule API. Enables customizing property rules.
@@ -1476,9 +674,8 @@ class FluentRules {
      */
     email() {
         // regex from https://html.spec.whatwg.org/multipage/forms.html#valid-e-mail-address
-        /* tslint:disable:max-line-length */
+        // eslint-disable-next-line
         return this.matches(/^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/)
-            /* tslint:enable:max-line-length */
             .withMessageKey('email');
     }
     /**
@@ -1614,7 +811,7 @@ class FluentEnsure {
         throw new Error(`Did you forget to add ".plugin('aurelia-validation')" to your main.js?`);
     }
     mergeRules(fluentRules, propertyName) {
-        // tslint:disable-next-line:triple-equals | Use loose equality for property keys
+        // eslint-disable-next-line
         const existingRules = this.rules.find(r => r.length > 0 && r[0].property.name == propertyName);
         if (existingRules) {
             const rule = existingRules[existingRules.length - 1];
@@ -1685,49 +882,6 @@ class ValidationRules {
     }
 }
 
-// Exports
-/**
- * Aurelia Validation Configuration API
- */
-class AureliaValidationConfiguration {
-    constructor() {
-        this.validatorType = StandardValidator;
-    }
-    /**
-     * Use a custom Validator implementation.
-     */
-    customValidator(type) {
-        this.validatorType = type;
-    }
-    /**
-     * Applies the configuration.
-     */
-    apply(container) {
-        const validator = container.get(this.validatorType);
-        container.registerInstance(Validator, validator);
-    }
-}
-/**
- * Configures the plugin.
- */
-function configure(
-// tslint:disable-next-line:ban-types
-frameworkConfig, callback) {
-    // the fluent rule definition API needs the parser to translate messages
-    // to interpolation expressions.
-    const messageParser = frameworkConfig.container.get(ValidationMessageParser);
-    const propertyParser = frameworkConfig.container.get(PropertyAccessorParser);
-    ValidationRules.initialize(messageParser, propertyParser);
-    // configure...
-    const config = new AureliaValidationConfiguration();
-    if (callback instanceof Function) {
-        callback(config);
-    }
-    config.apply(frameworkConfig.container);
-    // globalize the behaviors.
-    if (frameworkConfig.globalResources) {
-        frameworkConfig.globalResources(ValidateBindingBehavior, ValidateManuallyBindingBehavior, ValidateOnBlurBindingBehavior, ValidateOnChangeBindingBehavior, ValidateOnChangeOrBlurBindingBehavior, ValidationErrorsCustomAttribute, ValidationRendererCustomAttribute);
-    }
-}
 
-export { AureliaValidationConfiguration, configure, getTargetDOMElement, getPropertyInfo, PropertyAccessorParser, getAccessorExpression, ValidateBindingBehavior, ValidateManuallyBindingBehavior, ValidateOnBlurBindingBehavior, ValidateOnChangeBindingBehavior, ValidateOnChangeOrBlurBindingBehavior, ValidateEvent, ValidateResult, validateTrigger, ValidationController, ValidationControllerFactory, ValidationErrorsCustomAttribute, ValidationRendererCustomAttribute, Validator, Rules, StandardValidator, validationMessages, ValidationMessageProvider, ValidationMessageParser, MessageExpressionValidator, FluentRuleCustomizer, FluentRules, FluentEnsure, ValidationRules };
+
+export { ValidationMessageParser, PropertyAccessorParser, ValidationRules, StandardValidator, ValidationMessageProvider }

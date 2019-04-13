@@ -2,9 +2,23 @@ import React, { Component } from 'react';
 import { validationControllerInstance } from './validator';
 import { Person } from './person';
 
+function InvalidFeedback(props) {
+  const errors = props.validationErrors || [];
+  const propertyName = props.propertyName;
+  const listItems = errors.filter(error => error.propertyName === propertyName).map((error) => { return error.message });
+  return (
+    <div className="invalid-feedback">
+      {listItems}
+    </div>
+  );
+};
+
+
+
+
 export class PersonEditor extends Component {
   constructor(props) {
-    super(props)
+    super(props);
     this.controller = validationControllerInstance();
 
     this.state = {
@@ -44,10 +58,28 @@ export class PersonEditor extends Component {
       });
   }
 
+
+  validationFeedback = (propertyName) => {
+
+    let result = this.state.validationErrors.filter(error => error.propertyName === propertyName).map((error) =>
+      <div className="invalid-feedback" key={error.id}>
+        {error.message}
+      </div>
+    );
+    if (result.length === 0) {
+      result.push(<div className="valid-feedback" key={0}>
+        Looks good!
+     </div>)
+    }
+    console.log(result)
+    return result;
+  }
+
   render() {
+    console.log(this.state.validationErrors);
     return (<div>
 
-      <form className="needs-validation">
+      <form>
         <ul>
           {this.state.validationErrors && this.state.validationErrors.map((error) =>
             <li key={error.id}>
@@ -61,30 +93,30 @@ export class PersonEditor extends Component {
             <input type="text" className="form-control" name='firstName' onChange={this.handleChange} />
             <div className="valid-feedback">
               Looks good!
-              </div>
+             </div>
           </div>
 
           <div className="col-md-6 mb-3">
             <label  >Last name</label>
-            <input type="text" className="form-control" name='lastName' onChange={this.handleChange} />
-            <div className="valid-feedback">
-              Looks good!
-              </div>
+            <input type="text" className="form-control is-valid" name='lastName' onChange={this.handleChange} />
+            {this.validationFeedback('lastName')}
           </div>
 
           <div className="col-md-6 mb-3">
             <label>Email</label>
             <input type="text" className="form-control is-invalid" name='email' onChange={this.handleChange} />
-            <div className="valid-feedback">
-              Looks good!
-              </div>
+            <InvalidFeedback validationErrors={this.state.validationErrors} propertyName='email' />
+            {/* {this.validationFeedback('email')} */}
           </div>
           <div className="col-md-6 mb-3">
             <label>Birthday</label>
-            <input type="text" className="form-control" name='birthday' onChange={this.handleChange} />
-            <div className="valid-feedback">
+            <input type="text" className="form-control is-invalid" name='birthday' onChange={this.handleChange} />
+            <span className="invalid-feedback">
               Looks good!
-              </div>
+              </span>
+            <span className="invalid-feedback">
+              Looks good!
+              </span>
           </div>
         </div>
       </form>

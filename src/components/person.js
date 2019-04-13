@@ -1,7 +1,3 @@
-
-import { ValidationRules, } from 'aurelia-validation';
-
-
 export class Person {
     constructor(firstName, lastName, email, birthday) {
 
@@ -27,14 +23,14 @@ export class Address {
 
 
 
-export const AddressValidationRules = () => ValidationRules
+export const AddressValidationRules = (ValidationRules) => ValidationRules
     .ensure('country').required()
     .ensure('region').required()
     .ensure('city').required()
     .ensure('street').required();
 
 
-export const PersonValidationRules = () => ValidationRules
+export const PersonValidationRules = (ValidationRules) => ValidationRules
     .ensure('firstName').required()
     .ensure('lastName').required()
     .ensure('email').email().required()
