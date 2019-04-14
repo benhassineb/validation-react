@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import './App.css';
 import { PersonEditor } from './components/person-editor';
 import { ChildParent } from './components/child-parent';
+import { Playground } from './components/playground';
 
 class App extends Component {
   render() {
@@ -12,7 +13,8 @@ class App extends Component {
         <div className="mb-3">
 
         </div>
-        <ChildParent />
+        {/* <ChildParent /> */}
+        {/* <Playground/> */}
 
       </div>
     );

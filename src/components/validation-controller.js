@@ -126,7 +126,33 @@ export class ValidationController {
             return result;
         });
     };
+    
 
+    processResultDelta(oldResults, newResults) {
 
+        let results = oldResults.slice(0);
+        // create a shallow copy of newResults so we can mutate it without causing side-effects.
+        newResults = newResults.slice(0);
+        // create unrender instructions from the old results.
+        for (const oldResult of oldResults) {
+
+            // determine if there's a corresponding new result for the old result we are unrendering.
+            const newResultIndex = newResults.findIndex(x => x.rule === oldResult.rule && x.object === oldResult.object && x.propertyName === oldResult.propertyName);
+            if (newResultIndex === -1) {
+                // no corresponding new result... simple remove.
+                results.splice(results.indexOf(oldResult), 1);
+            }
+            else {
+                // there is a corresponding new result...
+                const newResult = newResults.splice(newResultIndex, 1)[0];
+
+                // do an in-place replacement of the old result with the new result.
+                // this ensures any repeats bound to this.results will not thrash.
+                results.splice(results.indexOf(oldResult), 1, newResult);
+
+            }
+        }
+
+    }
 
 }

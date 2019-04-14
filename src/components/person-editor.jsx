@@ -1,87 +1,70 @@
 import React, { Component } from 'react';
-import { validationControllerInstance } from './validator';
+import { initValidator } from './validator';
 import { Person } from './person';
-
-function InvalidFeedback(props) {
-  const errors = props.validationErrors || [];
-  const propertyName = props.propertyName;
-  const listItems = errors.filter(error => error.propertyName === propertyName).map((error) => { return error.message });
-  return (
-    <div className="invalid-feedback">
-      {listItems}
-    </div>
-  );
-};
-
-
-
+import { Vinput } from './vinput';
 
 export class PersonEditor extends Component {
   constructor(props) {
     super(props);
-    this.controller = validationControllerInstance();
-
+    this.validator = initValidator();
     this.state = {
-      person: new Person(),
-      validationErrors: [],
-      controller: this.controller
+      person: new Person('Boubaker', 'Hen Hassine', 'b.benhassine@hotmail.com', '2019-04-03'),
+      validationResults: [],
+      personValidationResults: {},
     };
-    // this.controller.addObject(this.state.person);
   }
 
-  handleChange = (el) => {
-    let inputName = el.target.name;
-    let inputValue = el.target.value;
-    let statusCopy = Object.assign({}, this.state);
-    statusCopy.person[inputName] = inputValue;
-    this.setState(statusCopy);
-    this.handleSubmit(null, inputName);
-  }
+  handleChange = (event) => {
+    const target = event.target;
+    const inputName = target.name;
+    let inputValue = target.value;
 
-
-  handleSubmit = (e, propertyName) => {
-    console.log(this.state.person);
-    let instruction = { object: this.state.person };
-    if (propertyName) {
-      instruction = { object: this.state.person, propertyName: propertyName }
-    }
-
-    this.controller.validate(instruction)
-      .then(result => {
-        if (result.valid) {
-          this.setState({ validationErrors: [] });
-        } else {
-          let errors = result.results.filter(res => !res.valid);
-          this.setState({ validationErrors: errors });
-          this.setState({ controller: this.controller });
-        }
+    let personCopy = this.state.person;
+    personCopy[inputName] = inputValue;
+    this.validate(personCopy, inputName).then(newResults => {
+      let delta = this.mergeValidationResults(this.state.validationResults, newResults);
+      this.setState({
+        validationResults: delta,
+        person: personCopy
       });
+    });
   }
 
 
-  validationFeedback = (propertyName) => {
+  handleSubmit = () => {
+    this.validate(this.state.person).then(newResults => {
+      let delta = this.mergeValidationResults(this.state.validationResults, newResults);
+      this.setState({ validationResults: delta });
+    });
+  }
 
-    let result = this.state.validationErrors.filter(error => error.propertyName === propertyName).map((error) =>
-      <div className="invalid-feedback" key={error.id}>
-        {error.message}
-      </div>
-    );
-    if (result.length === 0) {
-      result.push(<div className="valid-feedback" key={0}>
-        Looks good!
-     </div>)
+  validate = (obj, propertyName) => {
+    let validate = () => this.validator.validateObject(obj);
+    if (propertyName) {
+      validate = () => this.validator.validateProperty(obj, propertyName);
     }
-    console.log(result)
-    return result;
+    return validate();
   }
+
+
+  mergeValidationResults = (oldResults, newResults) => {
+    let results = oldResults.slice(0);
+    newResults.forEach(newResult => {
+      const newResultIndex = results.findIndex(x => x.rule === newResult.rule && x.object === newResult.object && x.propertyName === newResult.propertyName);
+      if (newResultIndex !== -1) {
+        results.splice(newResultIndex, 1);
+      }
+      results.push(newResult);
+    });
+    return results;
+  }
+
 
   render() {
-    console.log(this.state.validationErrors);
     return (<div>
-
       <form>
         <ul>
-          {this.state.validationErrors && this.state.validationErrors.map((error) =>
+          {this.state.validationResults && this.state.validationResults.map((error) =>
             <li key={error.id}>
               {error.message}
             </li>
@@ -90,33 +73,21 @@ export class PersonEditor extends Component {
         <div className="form-row">
           <div className="col-md-6 mb-3">
             <label  >First name</label>
-            <input type="text" className="form-control" name='firstName' onChange={this.handleChange} />
-            <div className="valid-feedback">
-              Looks good!
-             </div>
+            <Vinput type="text" className="form-control" name='firstName' value={this.state.person.firstName} onChange={this.handleChange} validationResults={this.state.validationResults} />
           </div>
 
           <div className="col-md-6 mb-3">
             <label  >Last name</label>
-            <input type="text" className="form-control is-valid" name='lastName' onChange={this.handleChange} />
-            {this.validationFeedback('lastName')}
+            <Vinput type="text" className="form-control" name='lastName' value={this.state.person.lastName} onChange={this.handleChange} validationResults={this.state.validationResults} />
           </div>
 
           <div className="col-md-6 mb-3">
             <label>Email</label>
-            <input type="text" className="form-control is-invalid" name='email' onChange={this.handleChange} />
-            <InvalidFeedback validationErrors={this.state.validationErrors} propertyName='email' />
-            {/* {this.validationFeedback('email')} */}
+            <Vinput type="text" className={'form-control'} name='email' value={this.state.person.email} onChange={this.handleChange} validationResults={this.state.validationResults} />
           </div>
           <div className="col-md-6 mb-3">
             <label>Birthday</label>
-            <input type="text" className="form-control is-invalid" name='birthday' onChange={this.handleChange} />
-            <span className="invalid-feedback">
-              Looks good!
-              </span>
-            <span className="invalid-feedback">
-              Looks good!
-              </span>
+            <Vinput type="date" className="form-control" name='birthday' value={this.state.person.birthday} onChange={this.handleChange} validationResults={this.state.validationResults} />
           </div>
         </div>
       </form>

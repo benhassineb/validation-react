@@ -23,19 +23,18 @@ export class Address {
 
 
 
-export const AddressValidationRules = (ValidationRules) => ValidationRules
+export const AddressValidationRules = (validationRules) => validationRules
     .ensure('country').required()
     .ensure('region').required()
     .ensure('city').required()
     .ensure('street').required();
 
 
-export const PersonValidationRules = (ValidationRules) => ValidationRules
+export const PersonValidationRules = (validationRules) => validationRules
     .ensure('firstName').required()
     .ensure('lastName').required()
-    .ensure('email').email().required()
-    .ensure('birthday').displayName('dated').required().satisfiesRule('date')
-    .ensure('address').required();
+    .ensure('email').required().then().email()
+    .ensure('birthday').displayName('dated').required().then().satisfiesRule('date');
 
 
 

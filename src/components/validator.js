@@ -28,18 +28,18 @@ export const initValidator = () => {
 export const validationControllerInstance = () => {
     return new ValidationController(initValidator());
 }
-export const initCustomRules = (ValidationRules) => {
-    ValidationRules.customRule(
+export const initCustomRules = (validationRules) => {
+    validationRules.customRule(
         'date',
         (value, obj) => value === null || value === undefined || value instanceof Date,
         `\${$displayName} must be a Date.`
     );
 }
 
-export const initValidationRules = (ValidationRules) => {
-    initCustomRules(ValidationRules);
-    PersonValidationRules(ValidationRules).on(Person);
-    AddressValidationRules(ValidationRules).on(Address);
+export const initValidationRules = (validationRules) => {
+    initCustomRules(validationRules);
+    PersonValidationRules(validationRules).on(Person);
+    AddressValidationRules(validationRules).on(Address);
 }
 
 
