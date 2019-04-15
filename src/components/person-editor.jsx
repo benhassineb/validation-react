@@ -2,8 +2,11 @@ import React, { Component } from 'react';
 import { initValidator } from './validator';
 import { Person } from './person';
 import { Vinput } from './vinput';
+import _ from 'lodash';
+
 
 export class PersonEditor extends Component {
+
   constructor(props) {
     super(props);
     this.validator = initValidator();
@@ -23,8 +26,10 @@ export class PersonEditor extends Component {
     personCopy[inputName] = inputValue;
     this.validate(personCopy, inputName).then(newResults => {
       let delta = this.mergeValidationResults(this.state.validationResults, newResults);
+
       this.setState({
-        validationResults: delta,
+        validationResults: delta.array,
+        personValidationResults: delta.obj,
         person: personCopy
       });
     });
@@ -34,7 +39,10 @@ export class PersonEditor extends Component {
   handleSubmit = () => {
     this.validate(this.state.person).then(newResults => {
       let delta = this.mergeValidationResults(this.state.validationResults, newResults);
-      this.setState({ validationResults: delta });
+      this.setState({
+        validationResults: delta.array,
+        personValidationResults: delta.obj
+      });
     });
   }
 
@@ -56,38 +64,33 @@ export class PersonEditor extends Component {
       }
       results.push(newResult);
     });
-    return results;
+    return {
+      array: results,
+      obj: _.groupBy(results, (x) => x.propertyName)
+    };
   }
-
 
   render() {
     return (<div>
       <form>
-        <ul>
-          {this.state.validationResults && this.state.validationResults.map((error) =>
-            <li key={error.id}>
-              {error.message}
-            </li>
-          )}
-        </ul>
         <div className="form-row">
           <div className="col-md-6 mb-3">
             <label  >First name</label>
-            <Vinput type="text" className="form-control" name='firstName' value={this.state.person.firstName} onChange={this.handleChange} validationResults={this.state.validationResults} />
+            <Vinput type="text" className="form-control" name='firstName' value={this.state.person.firstName} onChange={this.handleChange} validationResults={this.state.personValidationResults.firstName} />
           </div>
 
           <div className="col-md-6 mb-3">
             <label  >Last name</label>
-            <Vinput type="text" className="form-control" name='lastName' value={this.state.person.lastName} onChange={this.handleChange} validationResults={this.state.validationResults} />
+            <Vinput type="text" className="form-control" name='lastName' value={this.state.person.lastName} onChange={this.handleChange} validationResults={this.state.personValidationResults.lastName} />
           </div>
 
           <div className="col-md-6 mb-3">
             <label>Email</label>
-            <Vinput type="text" className={'form-control'} name='email' value={this.state.person.email} onChange={this.handleChange} validationResults={this.state.validationResults} />
+            <Vinput type="text" className={'form-control'} name='email' value={this.state.person.email} onChange={this.handleChange} validationResults={this.state.personValidationResults.email} />
           </div>
           <div className="col-md-6 mb-3">
             <label>Birthday</label>
-            <Vinput type="date" className="form-control" name='birthday' value={this.state.person.birthday} onChange={this.handleChange} validationResults={this.state.validationResults} />
+            <Vinput type="date" className="form-control" name='birthday' value={this.state.person.birthday} onChange={this.handleChange} validationResults={this.state.personValidationResults.birthday} />
           </div>
         </div>
       </form>
